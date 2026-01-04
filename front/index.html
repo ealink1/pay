@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>支付宝扫码支付</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>支付宝扫码支付</h1>
+        </div>
+
+        <div class="payment-form">
+            <div class="form-group">
+                <label for="amount">支付金额 (元)</label>
+                <input type="number" id="amount" placeholder="请输入支付金额" step="0.01" min="0.01">
+            </div>
+
+            <div class="form-group">
+                <label for="subject">商品名称</label>
+                <input type="text" id="subject" placeholder="请输入商品名称">
+            </div>
+
+            <div class="form-group">
+                <label for="body">商品描述</label>
+                <textarea id="body" placeholder="请输入商品描述（可选）" rows="3"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="payType">支付方式</label>
+                <select id="payType">
+                    <option value="qrcode">扫码支付（电脑/手机扫码）</option>
+                    <option value="app">APP支付（直接打开支付宝）</option>
+                </select>
+            </div>
+
+            <button id="createOrderBtn" class="btn btn-primary">生成支付</button>
+        </div>
+
+        <div id="qrCodeContainer" class="qr-code-container" style="display: none;">
+            <div class="qr-code-box">
+                <h2>请使用支付宝扫码支付</h2>
+                <div id="qrCode" class="qr-code"></div>
+                <p class="order-info">订单号: <span id="orderId"></span></p>
+                <p class="order-info">支付金额: <span id="orderAmount"></span> 元</p>
+                <button id="refreshBtn" class="btn btn-secondary">刷新订单状态</button>
+            </div>
+        </div>
+
+        <div id="orderStatus" class="order-status" style="display: none;"></div>
+
+        <div class="orders-list">
+            <h2>订单列表</h2>
+            <button id="refreshOrdersBtn" class="btn btn-secondary">刷新订单</button>
+            <div id="ordersTable" class="orders-table"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
