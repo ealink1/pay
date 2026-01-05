@@ -1,0 +1,28 @@
+sql:
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: password
+  database: test_db
+
+log:
+  level: info
+  encoding: console
+  output_paths:
+    - stdout
+  error_output_paths:
+    - stderr
+  file:
+    enabled: true
+    dir: logs
+    filename: app
+    max_age_days: 14
+    rotate_hours: 24
+
+trace:
+  enabled: true
+  header: X-Trace-Id
+
+alipay:
+  notify_url: "https://pay.xxxx.fun/api/alipay/sandbox/notify"
+  return_url: "https://pay.xxxx.fun/"

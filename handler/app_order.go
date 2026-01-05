@@ -15,8 +15,8 @@ type CreateAppOrderRequest struct {
 }
 
 type CreateAppOrderResponse struct {
-	OrderID  string `json:"order_id"`
-	OrderStr string `json:"order_str"`
+	OrderID string `json:"order_id"`
+	PayURL  string `json:"pay_url"`
 }
 
 func CreateAppOrder(c *gin.Context) {
@@ -45,16 +45,21 @@ func CreateAppOrder(c *gin.Context) {
 		Body:        order.Body,
 	}
 
-	orderStr, err := alipayClient.AppPay(payReq)
+	payURL, err := alipayClient.WapPay(&ealipay.WapPayRequest{
+		OutTradeNo:  payReq.OutTradeNo,
+		TotalAmount: payReq.TotalAmount,
+		Subject:     payReq.Subject,
+		Body:        payReq.Body,
+	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成支付参数失败"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成支付链接失败"})
 		return
 	}
 
 	model.Store.UpdateStatus(order.ID, model.OrderStatusPending, "")
 
 	c.JSON(http.StatusOK, CreateAppOrderResponse{
-		OrderID:  order.ID,
-		OrderStr: orderStr,
+		OrderID: order.ID,
+		PayURL:  payURL,
 	})
 }

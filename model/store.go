@@ -5,16 +5,22 @@ import (
 	"time"
 )
 
-type OrderStore struct {
+type OrderStore interface {
+	Create(order *Order) error
+	GetByID(id string) (*Order, bool)
+	GetByOutTradeNo(outTradeNo string) (*Order, bool)
+	UpdateStatus(id string, status OrderStatus, tradeNo string) error
+	List() []*Order
+}
+
+type InMemoryOrderStore struct {
 	mu     sync.RWMutex
 	orders map[string]*Order
 }
 
-var Store = &OrderStore{
-	orders: make(map[string]*Order),
-}
+var Store OrderStore = &InMemoryOrderStore{orders: make(map[string]*Order)}
 
-func (s *OrderStore) Create(order *Order) error {
+func (s *InMemoryOrderStore) Create(order *Order) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -27,7 +33,7 @@ func (s *OrderStore) Create(order *Order) error {
 	return nil
 }
 
-func (s *OrderStore) GetByID(id string) (*Order, bool) {
+func (s *InMemoryOrderStore) GetByID(id string) (*Order, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -35,7 +41,7 @@ func (s *OrderStore) GetByID(id string) (*Order, bool) {
 	return order, exists
 }
 
-func (s *OrderStore) GetByOutTradeNo(outTradeNo string) (*Order, bool) {
+func (s *InMemoryOrderStore) GetByOutTradeNo(outTradeNo string) (*Order, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -47,7 +53,7 @@ func (s *OrderStore) GetByOutTradeNo(outTradeNo string) (*Order, bool) {
 	return nil, false
 }
 
-func (s *OrderStore) UpdateStatus(id string, status OrderStatus, tradeNo string) error {
+func (s *InMemoryOrderStore) UpdateStatus(id string, status OrderStatus, tradeNo string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -65,7 +71,7 @@ func (s *OrderStore) UpdateStatus(id string, status OrderStatus, tradeNo string)
 	return nil
 }
 
-func (s *OrderStore) List() []*Order {
+func (s *InMemoryOrderStore) List() []*Order {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

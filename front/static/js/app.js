@@ -3,7 +3,9 @@ let currentOrderId = null;
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('createOrderBtn').addEventListener('click', createOrder);
     document.getElementById('refreshBtn').addEventListener('click', refreshOrderStatus);
+    document.getElementById('syncBtn').addEventListener('click', syncOrderStatus);
     document.getElementById('refreshOrdersBtn').addEventListener('click', loadOrders);
+    document.getElementById('ordersTable').addEventListener('click', onOrdersTableClick);
     
     loadOrders();
 });
@@ -54,7 +56,7 @@ async function createOrder() {
         currentOrderId = data.order_id;
 
         if (payType === 'app') {
-            displayAppPayment(data.order_str, data.order_id, amount);
+            displayAppPayment(data.pay_url, data.order_id, amount);
         } else {
             displayQRCode(data.qr_code, data.order_id, amount);
         }
@@ -81,47 +83,28 @@ function displayQRCode(qrCode, orderId, amount) {
     document.getElementById('qrCodeContainer').scrollIntoView({ behavior: 'smooth' });
 }
 
-function displayAppPayment(orderStr, orderId, amount) {
+function displayAppPayment(payUrl, orderId, amount) {
     const container = document.getElementById('qrCodeContainer');
     const qrCodeDiv = document.getElementById('qrCode');
     const orderIdSpan = document.getElementById('orderId');
     const orderAmountSpan = document.getElementById('orderAmount');
 
-    // 创建一个隐藏的表单来提交支付请求
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = 'https://openapi-sandbox.dl.alipaydev.com/gateway.do'; // 生产环境
-    // form.action = 'https://openapi.alipaydev.com/gateway.do'; // 沙箱环境
-    form.style.display = 'none';
-
-    // 解析 orderStr 为参数对
-    const params = orderStr.split('&');
-    params.forEach(param => {
-        const [key, value] = param.split('=');
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = decodeURIComponent(key);
-        input.value = decodeURIComponent(value);
-        form.appendChild(input);
-    });
-
-    document.body.appendChild(form);
-
-    // 添加提示信息
+    const safeUrl = payUrl || '';
     qrCodeDiv.innerHTML = `
         <div style="text-align: center;">
             <p>正在跳转到支付宝...</p>
             <p>如果页面没有自动跳转，请点击下方按钮</p>
-            <button onclick="document.querySelector('form').submit();" class="btn btn-primary">立即支付</button>
+            <a href="${safeUrl}" class="btn btn-primary" target="_blank" rel="noreferrer">立即支付</a>
         </div>
     `;
     orderIdSpan.textContent = orderId;
     orderAmountSpan.textContent = amount;
     container.style.display = 'block';
 
-    // 自动提交表单
     setTimeout(() => {
-        form.submit();
+        if (safeUrl) {
+            window.location.href = safeUrl;
+        }
     }, 1000);
 }
 
@@ -143,6 +126,70 @@ async function refreshOrderStatus() {
     } catch (error) {
         console.error('Error:', error);
         alert('获取订单状态失败: ' + error.message);
+    }
+}
+
+async function syncOrderStatus() {
+    if (!currentOrderId) {
+        alert('请先创建订单');
+        return;
+    }
+
+    const order = await syncOrderStatusById(currentOrderId);
+    if (order) {
+        displayOrderStatus(order);
+    }
+}
+
+async function syncOrderStatusById(orderId) {
+    try {
+        const response = await fetch(`/api/orders/${orderId}/sync`, { method: 'POST' });
+        if (!response.ok) {
+            const data = await response.json().catch(() => null);
+            const message = data && (data.detail || data.error) ? (data.detail || data.error) : '更新支付状态失败';
+            throw new Error(message);
+        }
+
+        const data = await response.json();
+        const order = data.order;
+        order.alipay_trade_status = data.alipay_trade_status;
+        loadOrders();
+        return order;
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('更新支付状态失败: ' + error.message);
+        return null;
+    }
+}
+
+async function onOrdersTableClick(e) {
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) {
+        return;
+    }
+    if (!target.classList.contains('sync-order-btn')) {
+        return;
+    }
+
+    const orderId = target.dataset.orderId;
+    if (!orderId) {
+        return;
+    }
+
+    const originalText = target.textContent;
+    target.textContent = '更新中...';
+    target.setAttribute('disabled', 'disabled');
+
+    try {
+        const order = await syncOrderStatusById(orderId);
+        if (order) {
+            currentOrderId = orderId;
+            displayOrderStatus(order);
+        }
+    } finally {
+        target.textContent = originalText;
+        target.removeAttribute('disabled');
     }
 }
 
@@ -174,6 +221,7 @@ function displayOrderStatus(order) {
     statusDiv.innerHTML = `
         <h3>订单状态</h3>
         <p class="${statusClass}">${statusText}</p>
+        ${order.alipay_trade_status ? `<p>支付宝状态: ${order.alipay_trade_status}</p>` : ''}
         ${order.trade_no ? `<p>支付宝交易号: ${order.trade_no}</p>` : ''}
     `;
     statusDiv.style.display = 'block';
@@ -233,6 +281,7 @@ function displayOrders(orders) {
                     <th>金额</th>
                     <th>状态</th>
                     <th>创建时间</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -243,6 +292,7 @@ function displayOrders(orders) {
                         <td>¥${order.total_amount}</td>
                         <td><span class="status-badge ${order.status}">${getStatusText(order.status)}</span></td>
                         <td>${formatDate(order.created_at)}</td>
+                        <td><button class="btn btn-secondary sync-order-btn" data-order-id="${order.id}">更新状态</button></td>
                     </tr>
                 `).join('')}
             </tbody>

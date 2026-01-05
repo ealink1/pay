@@ -19,6 +19,8 @@ type AlipayClient struct {
 	PrivateKey      *rsa.PrivateKey
 	AlipayPublicKey *rsa.PublicKey
 	GatewayUrl      string
+	NotifyURL       string
+	ReturnURL       string
 }
 
 type Config struct {
@@ -26,6 +28,8 @@ type Config struct {
 	PrivateKey      string
 	AlipayPublicKey string
 	IsSandbox       bool
+	NotifyURL       string
+	ReturnURL       string
 }
 
 func NewClient(config *Config) (*AlipayClient, error) {
@@ -49,6 +53,8 @@ func NewClient(config *Config) (*AlipayClient, error) {
 		PrivateKey:      privateKey,
 		AlipayPublicKey: alipayPublicKey,
 		GatewayUrl:      gatewayUrl,
+		NotifyURL:       strings.TrimSpace(config.NotifyURL),
+		ReturnURL:       strings.TrimSpace(config.ReturnURL),
 	}, nil
 }
 
@@ -123,6 +129,12 @@ func (c *AlipayClient) buildCommonParams(method string, bizContent string) map[s
 		"sign_type": SignType,
 		"timestamp": "",
 		"version":   Version,
+	}
+	if c.NotifyURL != "" {
+		params["notify_url"] = c.NotifyURL
+	}
+	if c.ReturnURL != "" {
+		params["return_url"] = c.ReturnURL
 	}
 	if bizContent != "" {
 		params["biz_content"] = bizContent
